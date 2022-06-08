@@ -10,15 +10,15 @@
 static const Direction ALL_DIRECTIONS[] = {Direction::UP, Direction::DOWN,
                                            Direction::LEFT, Direction::RIGHT};
 
-static void SearchForSimpleDeadlocks(const Board& board,
+static void SearchForSimpleDeadlocks(const Board &board,
                                      Position p,
-                                     std::vector<bool>& simpleDeadlockArray,
-                                     std::vector<bool>& simpleDeadlockVisited);
+                                     std::vector<bool> &simpleDeadlockArray,
+                                     std::vector<bool> &simpleDeadlockVisited);
 
-static void SearchForSimpleDeadlocks(const Board& board,
+static void SearchForSimpleDeadlocks(const Board &board,
                                      Position p,
-                                     std::vector<bool>& simpleDeadlockArray,
-                                     std::vector<bool>& simpleDeadlockVisited) {
+                                     std::vector<bool> &simpleDeadlockArray,
+                                     std::vector<bool> &simpleDeadlockVisited) {
   if (simpleDeadlockVisited[p]) {
     return;
   }
@@ -36,10 +36,10 @@ static void SearchForSimpleDeadlocks(const Board& board,
   }
 }
 
-void NormalizeBoardAndFindPushes(Board& board,
-                                 std::vector<bool>& normVisited,
-                                 std::vector<Position>& normStack,
-                                 std::vector<Push>& normPushes) {
+void NormalizeBoardAndFindPushes(Board &board,
+                                 std::vector<bool> &normVisited,
+                                 std::vector<Position> &normStack,
+                                 std::vector<Push> &normPushes) {
   // Initialize input data structures.
   std::fill(normVisited.begin(), normVisited.end(), false);
   normStack.clear();
@@ -81,7 +81,7 @@ void NormalizeBoardAndFindPushes(Board& board,
   board.MovePlayer(normPlayer);
 }
 
-Solver::Solver(Board& board)
+Solver::Solver(Board &board)
     : board(board),
       simpleDeadlockArray(board.Width() * board.Height(), true),
       distanceTable(board) {
@@ -96,18 +96,18 @@ Solver::Solver(Board& board)
   }
 }
 
-static void OutputGraphHeader(std::ostream& graphOutput) {
+static void OutputGraphHeader(std::ostream &graphOutput) {
   graphOutput << "digraph {" << std::endl;
   graphOutput << "  node [fontname=\"Courier New\" fontsize=10]" << std::endl;
   graphOutput << "  edge [fontname=\"Courier New\" fontsize=10]" << std::endl;
 }
 
-static void OutputGraphFooter(std::ostream& graphOutput) {
+static void OutputGraphFooter(std::ostream &graphOutput) {
   graphOutput << "}" << std::endl;
 }
 
-static void OutputGraphNode(std::ostream& graphOutput,
-                            const Board& board,
+static void OutputGraphNode(std::ostream &graphOutput,
+                            const Board &board,
                             uint64_t hash,
                             int gValue,
                             int hValue) {
@@ -117,13 +117,13 @@ static void OutputGraphNode(std::ostream& graphOutput,
               << " c=" << board.GoalsCompleted() << "\"]" << std::endl;
 }
 
-static void OutputGraphEdge(std::ostream& graphOutput,
+static void OutputGraphEdge(std::ostream &graphOutput,
                             uint64_t hashFrom,
                             uint64_t hashTo) {
   graphOutput << "  " << hashFrom << " -> " << hashTo << std::endl;
 }
 
-int Solver::Solve(std::ostream* graphOutput) {
+int Solver::Solve(std::ostream *graphOutput) {
   if (board.Done()) {
     return 0;
   }
@@ -181,7 +181,7 @@ int Solver::Solve(std::ostream* graphOutput) {
     }
 
     // Generate children.
-    for (const Push& p : currState->Pushes()) {
+    for (const Push &p : currState->Pushes()) {
       // Check for simple deadlock.
       Position box = board.MovePosition(p.Box(), p.Direction());
       if (simpleDeadlockArray[box]) {
