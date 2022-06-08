@@ -2,13 +2,13 @@
 
 #include <argparse/argparse.hpp>
 #include <fstream>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
-#include <memory>
 
-#include "Solver.h"
 #include "Board.h"
+#include "Solver.h"
 
 int main(int argc, char *argv[]) {
   // Parse arguments.

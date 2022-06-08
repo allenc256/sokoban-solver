@@ -7,10 +7,18 @@
 
 class SearchState {
 public:
-  SearchState(uint64_t id, Position player, const std::vector<Position> &boxes,
-              const std::vector<Push> &pushes, int aStarGValue, int aStarHValue)
-      : id(id), player(player), boxes(boxes), pushes(pushes),
-        aStarGValue(aStarGValue), aStarHValue(aStarHValue) {}
+  SearchState(uint64_t id,
+              Position player,
+              const std::vector<Position> &boxes,
+              const std::vector<Push> &pushes,
+              int aStarGValue,
+              int aStarHValue)
+      : id(id),
+        player(player),
+        boxes(boxes),
+        pushes(pushes),
+        aStarGValue(aStarGValue),
+        aStarHValue(aStarHValue) {}
 
   uint64_t Id() const { return id; }
   Position Player() const { return player; }

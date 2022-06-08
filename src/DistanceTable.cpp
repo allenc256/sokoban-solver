@@ -14,7 +14,7 @@ struct State {
 static const Direction ALL_DIRECTIONS[] = {Direction::UP, Direction::DOWN,
                                            Direction::LEFT, Direction::RIGHT};
 
-DistanceTable::DistanceTable(const Board &board)
+DistanceTable::DistanceTable(const Board& board)
     : board(board),
       distances(board.Goals().size(),
                 std::vector<int>(board.Width() * board.Height(), -1)),
@@ -24,7 +24,7 @@ DistanceTable::DistanceTable(const Board &board)
 
   for (int i = 0; i < board.Goals().size(); i++) {
     // Initialize distance array for goal.
-    std::vector<int> &d = distances[i];
+    std::vector<int>& d = distances[i];
 
     // Clear DFS state.
     std::fill(visited.begin(), visited.end(), false);
@@ -34,7 +34,7 @@ DistanceTable::DistanceTable(const Board &board)
     Position initialPos = board.Goals()[i];
     queue.emplace_back(State(initialPos, 0));
     while (!queue.empty()) {
-      State &s = queue.front();
+      State& s = queue.front();
       queue.pop_front();
       if (visited[s.position]) {
         continue;
@@ -51,7 +51,7 @@ DistanceTable::DistanceTable(const Board &board)
   }
 }
 
-int DistanceTable::EstimateDistance(const std::vector<Position> &boxes) const {
+int DistanceTable::EstimateDistance(const std::vector<Position>& boxes) const {
   assert(boxes.size() == board.Goals().size());
 
   buffer.clear();

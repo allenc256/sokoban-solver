@@ -36,35 +36,38 @@ public:
 
   Position MovePosition(Position p, Direction d) const {
     switch (d) {
-    case Direction::UP:
-      return p - width;
-    case Direction::DOWN:
-      return p + width;
-    case Direction::LEFT:
-      return p - 1;
-    case Direction::RIGHT:
-      return p + 1;
+      case Direction::UP:
+        return p - width;
+      case Direction::DOWN:
+        return p + width;
+      case Direction::LEFT:
+        return p - 1;
+      case Direction::RIGHT:
+        return p + 1;
     }
     std::abort();
   }
 
   Position UnmovePosition(Position p, Direction d) const {
     switch (d) {
-    case Direction::UP:
-      return p + width;
-    case Direction::DOWN:
-      return p - width;
-    case Direction::LEFT:
-      return p + 1;
-    case Direction::RIGHT:
-      return p - 1;
+      case Direction::UP:
+        return p + width;
+      case Direction::DOWN:
+        return p - width;
+      case Direction::LEFT:
+        return p + 1;
+      case Direction::RIGHT:
+        return p - 1;
     }
     std::abort();
   }
 
 private:
-  Board(int width, int height, Position player,
-        const std::vector<bool> &wallArray, const std::vector<Position> &boxes,
+  Board(int width,
+        int height,
+        Position player,
+        const std::vector<bool> &wallArray,
+        const std::vector<Position> &boxes,
         const std::vector<Position> &goalArray);
 
   void Normalize();

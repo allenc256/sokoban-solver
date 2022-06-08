@@ -8,13 +8,13 @@
 #include "DistanceTable.h"
 
 class Solver {
-public:
-  Solver(Board &board);
+ public:
+  Solver(Board& board);
 
-  int Solve(std::ostream *graphOutput);
+  int Solve(std::ostream* graphOutput);
 
-private:
-  Board &board;
+ private:
+  Board& board;
   std::vector<bool> simpleDeadlockArray;
   DistanceTable distanceTable;
 };

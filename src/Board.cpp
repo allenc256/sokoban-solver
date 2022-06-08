@@ -14,14 +14,23 @@
 static const int NO_BOX = -1;
 static const int NO_GOAL = -1;
 
-Board::Board(int width, int height, Position player,
-             const std::vector<bool> &wallArray,
-             const std::vector<Position> &boxes,
-             const std::vector<Position> &goals)
-    : width(width), height(height), player(player), boxes(boxes), goals(goals),
-      boxArray(width * height, NO_BOX), wallArray(wallArray),
-      goalArray(width * height, NO_GOAL), goalsCompleted(0),
-      boxArrayHashTable(width * height), playerArrayHashTable(width * height) {
+Board::Board(int width,
+             int height,
+             Position player,
+             const std::vector<bool>& wallArray,
+             const std::vector<Position>& boxes,
+             const std::vector<Position>& goals)
+    : width(width),
+      height(height),
+      player(player),
+      boxes(boxes),
+      goals(goals),
+      boxArray(width * height, NO_BOX),
+      wallArray(wallArray),
+      goalArray(width * height, NO_GOAL),
+      goalsCompleted(0),
+      boxArrayHashTable(width * height),
+      playerArrayHashTable(width * height) {
   // Initialize box array.
   for (int i = 0; i < boxes.size(); ++i) {
     boxArray[boxes[i]] = i;
@@ -48,14 +57,14 @@ Board::Board(int width, int height, Position player,
 }
 
 // N.B., from https://stackoverflow.com/questions/216823/how-to-trim-a-stdstring
-static inline void rtrim(std::string &s) {
+static inline void rtrim(std::string& s) {
   s.erase(std::find_if(s.rbegin(), s.rend(),
                        [](unsigned char ch) { return !std::isspace(ch); })
               .base(),
           s.end());
 }
 
-Board Board::ParseFromText(std::istream &is) {
+Board Board::ParseFromText(std::istream& is) {
   // Read lines from stream.
   std::string line;
   std::vector<std::string> lines;
@@ -70,7 +79,7 @@ Board Board::ParseFromText(std::istream &is) {
   // Compute width and height.
   int height = lines.size();
   int width = 0;
-  for (auto &line : lines) {
+  for (auto& line : lines) {
     if (line.size() > width) {
       width = line.size();
     }
@@ -86,30 +95,30 @@ Board Board::ParseFromText(std::istream &is) {
       char ch = lines[y][x];
       int position = y * width + x;
       switch (ch) {
-      case '#':
-        wallArray[position] = true;
-        break;
-      case '@':
-        player = position;
-        break;
-      case '+':
-        player = position;
-        goals.emplace_back(position);
-        break;
-      case '$':
-        boxes.emplace_back(position);
-        break;
-      case '*':
-        boxes.emplace_back(position);
-        goals.emplace_back(position);
-        break;
-      case '.':
-        goals.emplace_back(position);
-        break;
-      case ' ':
-        break;
-      default:
-        std::abort();
+        case '#':
+          wallArray[position] = true;
+          break;
+        case '@':
+          player = position;
+          break;
+        case '+':
+          player = position;
+          goals.emplace_back(position);
+          break;
+        case '$':
+          boxes.emplace_back(position);
+          break;
+        case '*':
+          boxes.emplace_back(position);
+          goals.emplace_back(position);
+          break;
+        case '.':
+          goals.emplace_back(position);
+          break;
+        case ' ':
+          break;
+        default:
+          std::abort();
       }
     }
   }
@@ -120,7 +129,7 @@ Board Board::ParseFromText(std::istream &is) {
   return Board(width, height, player, wallArray, boxes, goals);
 }
 
-static void OutputNewline(std::ostream &os, bool quoteNewlines) {
+static void OutputNewline(std::ostream& os, bool quoteNewlines) {
   if (quoteNewlines) {
     os << "\\l";
   } else {
@@ -128,7 +137,7 @@ static void OutputNewline(std::ostream &os, bool quoteNewlines) {
   }
 }
 
-void Board::DumpToText(std::ostream &os, bool quoteNewlines) const {
+void Board::DumpToText(std::ostream& os, bool quoteNewlines) const {
   int position = 0;
   for (int y = 0; y < height; y++) {
     os << ">";
@@ -160,7 +169,7 @@ void Board::DumpToText(std::ostream &os, bool quoteNewlines) const {
   }
 }
 
-void Board::PerformPush(const Push &push) {
+void Board::PerformPush(const Push& push) {
   Position boxFrom = push.Box();
   Position boxTo = MovePosition(boxFrom, push.Direction());
   assert(!wallArray[boxTo] && boxArray[boxTo] == NO_BOX &&
@@ -184,7 +193,7 @@ void Board::PerformPush(const Push &push) {
   player = boxFrom;
 }
 
-void Board::PerformUnpush(const Push &push) {
+void Board::PerformUnpush(const Push& push) {
   // Unmove box.
   Position boxTo = push.Box();
   Position boxFrom = MovePosition(boxTo, push.Direction());
@@ -208,7 +217,7 @@ void Board::PerformUnpush(const Push &push) {
   player = UnmovePosition(boxTo, push.Direction());
 }
 
-void Board::ResetState(Position _player, const std::vector<Position> &_boxes) {
+void Board::ResetState(Position _player, const std::vector<Position>& _boxes) {
   // Reset player state.
   player = _player;
 
