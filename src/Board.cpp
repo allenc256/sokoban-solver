@@ -8,8 +8,11 @@
 #include <iomanip>
 #include <locale>
 #include <random>
+#include <stdexcept>
 #include <string>
 #include <vector>
+
+using namespace std::string_literals;
 
 static const int NO_BOX = -1;
 static const int NO_GOAL = -1;
@@ -31,6 +34,12 @@ Board::Board(int width,
       goalsCompleted(0),
       boxArrayHashTable(width * height),
       playerArrayHashTable(width * height) {
+  if (boxes.size() != goals.size()) {
+    throw std::invalid_argument("box/goal count mismatch: "s +
+                                std::to_string(boxes.size()) + "/" +
+                                std::to_string(goals.size()));
+  }
+
   // Initialize box array.
   for (int i = 0; i < boxes.size(); ++i) {
     boxArray[boxes[i]] = i;
@@ -118,7 +127,7 @@ Board Board::ParseFromText(std::istream &is) {
         case ' ':
           break;
         default:
-          std::abort();
+          throw std::invalid_argument("unrecognized character: "s + ch);
       }
     }
   }

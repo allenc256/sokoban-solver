@@ -6,15 +6,17 @@
 
 #include "Board.h"
 #include "DistanceTable.h"
+#include "SolveResult.h"
 
 class Solver {
- public:
-  Solver(Board& board);
+public:
+  Solver(Board &board, int maxStates);
 
-  int Solve(std::ostream* graphOutput);
+  SolveResult Solve(std::ostream *graphOutput);
 
- private:
-  Board& board;
+private:
+  Board &board;
   std::vector<bool> simpleDeadlockArray;
   DistanceTable distanceTable;
+  int maxStates;
 };

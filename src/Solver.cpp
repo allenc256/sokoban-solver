@@ -81,10 +81,11 @@ void NormalizeBoardAndFindPushes(Board &board,
   board.MovePlayer(normPlayer);
 }
 
-Solver::Solver(Board &board)
+Solver::Solver(Board &board, int maxStates)
     : board(board),
       simpleDeadlockArray(board.Width() * board.Height(), true),
-      distanceTable(board) {
+      distanceTable(board),
+      maxStates(maxStates) {
   // Compute simple deadlocks.
   std::vector<bool> simpleDeadlockVisited(board.Width() * board.Height(),
                                           false);
@@ -123,9 +124,9 @@ static void OutputGraphEdge(std::ostream &graphOutput,
   graphOutput << "  " << hashFrom << " -> " << hashTo << std::endl;
 }
 
-int Solver::Solve(std::ostream *graphOutput) {
+SolveResult Solver::Solve(std::ostream *graphOutput) {
   if (board.Done()) {
-    return 0;
+    return SolveResult(true, 0, 0);
   }
 
   if (graphOutput) {
@@ -136,6 +137,7 @@ int Solver::Solve(std::ostream *graphOutput) {
   std::vector<Position> normStack;
   std::vector<Push> normPushes;
   int statesVisited = 0;
+  int solutionPushes = -1;
   uint64_t hashFrom;
 
   auto compare = [](std::shared_ptr<SearchState> s1,
@@ -157,7 +159,7 @@ int Solver::Solve(std::ostream *graphOutput) {
   openStatesQueue.emplace(initialState);
   openStates[initialState->Id()] = initialState;
 
-  while (!openStatesQueue.empty()) {
+  while (!openStatesQueue.empty() && statesVisited < maxStates) {
     // Get current node, remove from open list, add to closed list.
     std::shared_ptr<SearchState> currState = openStatesQueue.top();
     openStatesQueue.pop();
@@ -170,6 +172,7 @@ int Solver::Solve(std::ostream *graphOutput) {
 
     // Check if done.
     if (board.Done()) {
+      solutionPushes = currState->AStarGValue();
       break;
     }
 
@@ -235,5 +238,5 @@ end_of_search:
     OutputGraphFooter(*graphOutput);
   }
 
-  return statesVisited;
+  return SolveResult(solutionPushes != -1, statesVisited, solutionPushes);
 }
