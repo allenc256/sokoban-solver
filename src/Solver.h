@@ -6,6 +6,7 @@
 
 #include "Board.h"
 #include "DistanceTable.h"
+#include "SimpleDeadlockTable.h"
 #include "SolveResult.h"
 
 class Solver {
@@ -16,7 +17,7 @@ public:
 
 private:
   Board &board;
-  std::vector<bool> simpleDeadlockArray;
+  SimpleDeadlockTable simpleDeadlockTable;
   DistanceTable distanceTable;
   int maxStates;
 };

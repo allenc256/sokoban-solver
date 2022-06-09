@@ -11,33 +11,8 @@
 static const Direction ALL_DIRECTIONS[] = {Direction::UP, Direction::DOWN,
                                            Direction::LEFT, Direction::RIGHT};
 
-static void SearchForSimpleDeadlocks(const Board &board,
-                                     Position p,
-                                     std::vector<bool> &simpleDeadlockArray,
-                                     std::vector<bool> &simpleDeadlockVisited);
-
-static void SearchForSimpleDeadlocks(const Board &board,
-                                     Position p,
-                                     std::vector<bool> &simpleDeadlockArray,
-                                     std::vector<bool> &simpleDeadlockVisited) {
-  if (simpleDeadlockVisited[p]) {
-    return;
-  }
-  simpleDeadlockArray[p] = false;
-  simpleDeadlockVisited[p] = true;
-  for (auto d : ALL_DIRECTIONS) {
-    Position p2 = board.MovePosition(p, d);
-    if (!board.HasWall(p2)) {
-      Position p3 = board.MovePosition(p2, d);
-      if (!board.HasWall(p3)) {
-        SearchForSimpleDeadlocks(board, p2, simpleDeadlockArray,
-                                 simpleDeadlockVisited);
-      }
-    }
-  }
-}
-
 void NormalizeBoardAndFindPushes(Board &board,
+                                 const SimpleDeadlockTable &simpleDeadlockTable,
                                  std::vector<bool> &normVisited,
                                  std::vector<Position> &normStack,
                                  std::vector<Push> &normPushes) {
@@ -66,7 +41,8 @@ void NormalizeBoardAndFindPushes(Board &board,
       }
       if (board.HasBox(p2)) {
         Position p3 = board.MovePosition(p2, d);
-        if (!board.HasBox(p3) && !board.HasWall(p3)) {
+        if (!board.HasBox(p3) && !board.HasWall(p3) &&
+            !simpleDeadlockTable.IsDeadlock(p3)) {
           normPushes.emplace_back(p2, d);
         }
         continue;
@@ -84,19 +60,9 @@ void NormalizeBoardAndFindPushes(Board &board,
 
 Solver::Solver(Board &board, int maxStates)
     : board(board),
-      simpleDeadlockArray(board.Width() * board.Height(), true),
+      simpleDeadlockTable(board),
       distanceTable(board),
-      maxStates(maxStates) {
-  // Compute simple deadlocks.
-  std::vector<bool> simpleDeadlockVisited(board.Width() * board.Height(),
-                                          false);
-  for (Position p = 0; p < board.Width() * board.Height(); p++) {
-    if (board.HasGoal(p)) {
-      SearchForSimpleDeadlocks(board, p, simpleDeadlockArray,
-                               simpleDeadlockVisited);
-    }
-  }
-}
+      maxStates(maxStates) {}
 
 static void OutputDebugHash(std::ostream &debugFile, uint64_t hash) {
   std::ios oldState(nullptr);
@@ -166,7 +132,8 @@ SolveResult Solver::Solve(std::ostream *debugFile) {
   std::unordered_map<uint64_t, std::shared_ptr<SearchState>> openStates;
   std::unordered_set<uint64_t> closedStates;
 
-  NormalizeBoardAndFindPushes(board, normVisited, normStack, normPushes);
+  NormalizeBoardAndFindPushes(board, simpleDeadlockTable, normVisited,
+                              normStack, normPushes);
   int initialHValue = distanceTable.EstimateDistance(board.Boxes());
   std::shared_ptr<SearchState> initialState =
       std::make_shared<SearchState>(board.Hash(), board.Player(), board.Boxes(),
@@ -199,15 +166,10 @@ SolveResult Solver::Solve(std::ostream *debugFile) {
 
     // Generate children.
     for (const Push &p : currState->Pushes()) {
-      // Check for simple deadlock.
-      Position box = board.MovePosition(p.Box(), p.Direction());
-      if (simpleDeadlockArray[box]) {
-        continue;
-      }
-
       // Mutate board.
       board.PerformPush(p);
-      NormalizeBoardAndFindPushes(board, normVisited, normStack, normPushes);
+      NormalizeBoardAndFindPushes(board, simpleDeadlockTable, normVisited,
+                                  normStack, normPushes);
 
       // Check if child exists on closed list.
       if (closedStates.find(board.Hash()) != closedStates.end()) {
