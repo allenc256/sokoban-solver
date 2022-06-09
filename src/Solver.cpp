@@ -8,9 +8,6 @@
 #include "SearchState.h"
 #include "Solver.h"
 
-static const Direction ALL_DIRECTIONS[] = {Direction::UP, Direction::DOWN,
-                                           Direction::LEFT, Direction::RIGHT};
-
 void NormalizeBoardAndFindPushes(Board &board,
                                  const SimpleDeadlockTable &simpleDeadlockTable,
                                  std::vector<bool> &normVisited,

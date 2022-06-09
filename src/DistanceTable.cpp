@@ -11,9 +11,6 @@ struct State {
       : position(position), distance(distance) {}
 };
 
-static const Direction ALL_DIRECTIONS[] = {Direction::UP, Direction::DOWN,
-                                           Direction::LEFT, Direction::RIGHT};
-
 DistanceTable::DistanceTable(const Board &board)
     : board(board),
       distances(board.Goals().size(),

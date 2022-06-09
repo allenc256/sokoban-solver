@@ -1,8 +1,5 @@
 #include "SimpleDeadlockTable.h"
 
-static const Direction ALL_DIRECTIONS[] = {Direction::UP, Direction::DOWN,
-                                           Direction::LEFT, Direction::RIGHT};
-
 static void SearchForSimpleDeadlocks(const Board &board,
                                      Position p,
                                      std::vector<bool> &deadlockArray,
