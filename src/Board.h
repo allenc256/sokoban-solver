@@ -9,12 +9,13 @@
 class Board {
 public:
   static Board ParseFromText(std::istream &is);
-  void DumpToText(std::ostream &os, bool quoteNewlines) const;
+  void DumpToText(std::ostream &os) const;
 
   void PerformPush(const Push &p);
   void PerformUnpush(const Push &p);
 
-  uint64_t ExtractSearchHash() const;
+  uint64_t Hash() const { return hash; }
+
   void ResetState(Position player, const std::vector<Position> &boxes);
 
   bool Done() const { return GoalsCompleted() == GoalsRequired(); }
@@ -30,9 +31,11 @@ public:
   bool HasBox(Position p) const { return boxArray[p] != -1; }
 
   Position Player() const { return player; }
-  void MovePlayer(Position p) { player = p; }
   const std::vector<Position> &Boxes() const { return boxes; }
   const std::vector<Position> &Goals() const { return goals; }
+
+  void MovePlayer(Position to);
+  void MoveBox(Position from, Position to);
 
   Position MovePosition(Position p, Direction d) const {
     switch (d) {
@@ -62,6 +65,14 @@ public:
     std::abort();
   }
 
+  int PositionX(Position p) const {
+    return p % width;
+  }
+
+  int PositionY(Position p) const {
+    return p / width;
+  }
+
 private:
   Board(int width,
         int height,
@@ -71,6 +82,7 @@ private:
         const std::vector<Position> &goalArray);
 
   void Normalize();
+  uint64_t ComputeHash() const;
 
   int width, height;
   Position player;
@@ -82,4 +94,5 @@ private:
   std::vector<uint64_t> boxArrayHashTable;
   std::vector<uint64_t> playerArrayHashTable;
   int goalsCompleted;
+  mutable uint64_t hash;
 };

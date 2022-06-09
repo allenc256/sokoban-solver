@@ -1,3 +1,4 @@
+#include <iomanip>
 #include <iostream>
 #include <memory>
 #include <queue>
@@ -97,40 +98,55 @@ Solver::Solver(Board &board, int maxStates)
   }
 }
 
-static void OutputGraphHeader(std::ostream &graphOutput) {
-  graphOutput << "digraph {" << std::endl;
-  graphOutput << "  node [fontname=\"Courier New\" fontsize=10]" << std::endl;
-  graphOutput << "  edge [fontname=\"Courier New\" fontsize=10]" << std::endl;
+static void OutputDebugHash(std::ostream &debugFile, uint64_t hash) {
+  std::ios oldState(nullptr);
+  oldState.copyfmt(debugFile);
+  debugFile << std::hex << std::setw(16) << std::setfill('0') << hash;
+  debugFile.copyfmt(oldState);
 }
 
-static void OutputGraphFooter(std::ostream &graphOutput) {
-  graphOutput << "}" << std::endl;
+static void OutputDebugState(std::ostream &debugFile,
+                             const Board &board,
+                             int stateIndex,
+                             int gValue,
+                             int hValue) {
+  debugFile << "state " << stateIndex << ": ";
+  OutputDebugHash(debugFile, board.Hash());
+  debugFile << std::endl;
+  board.DumpToText(debugFile);
+  debugFile << "g-value: " << gValue << std::endl;
+  debugFile << "h-value: " << hValue << std::endl;
+  debugFile << "f-value: " << (gValue + hValue) << std::endl;
+  debugFile << "goals: " << board.GoalsCompleted() << std::endl;
 }
 
-static void OutputGraphNode(std::ostream &graphOutput,
-                            const Board &board,
-                            uint64_t hash,
-                            int gValue,
-                            int hValue) {
-  graphOutput << "  " << hash << "[label=\"";
-  board.DumpToText(graphOutput, true);
-  graphOutput << "\\ng=" << gValue << " h=" << hValue
-              << " c=" << board.GoalsCompleted() << "\"]" << std::endl;
+static void OutputDebugPush(std::ostream &debugFile,
+                            const Push &push,
+                            const Board &board) {
+  debugFile << "push: (" << board.PositionX(push.Box()) << ", "
+            << board.PositionY(push.Box()) << ") ";
+  switch (push.Direction()) {
+    case Direction::UP:
+      debugFile << "UP   ";
+      break;
+    case Direction::DOWN:
+      debugFile << "DOWN ";
+      break;
+    case Direction::LEFT:
+      debugFile << "LEFT ";
+      break;
+    case Direction::RIGHT:
+      debugFile << "RIGHT";
+      break;
+  }
+  debugFile << " -> ";
+  OutputDebugHash(debugFile, board.Hash());
+  debugFile << std::endl;
 }
 
-static void OutputGraphEdge(std::ostream &graphOutput,
-                            uint64_t hashFrom,
-                            uint64_t hashTo) {
-  graphOutput << "  " << hashFrom << " -> " << hashTo << std::endl;
-}
-
-SolveResult Solver::Solve(std::ostream *graphOutput) {
+SolveResult Solver::Solve(std::ostream *debugFile) {
   if (board.Done()) {
     return SolveResult(true, 0, 0);
-  }
-
-  if (graphOutput) {
-    OutputGraphHeader(*graphOutput);
   }
 
   std::vector<bool> normVisited(board.Width() * board.Height());
@@ -138,7 +154,6 @@ SolveResult Solver::Solve(std::ostream *graphOutput) {
   std::vector<Push> normPushes;
   int statesVisited = 0;
   int solutionPushes = -1;
-  uint64_t hashFrom;
 
   auto compare = [](std::shared_ptr<SearchState> s1,
                     std::shared_ptr<SearchState> s2) {
@@ -153,9 +168,9 @@ SolveResult Solver::Solve(std::ostream *graphOutput) {
 
   NormalizeBoardAndFindPushes(board, normVisited, normStack, normPushes);
   int initialHValue = distanceTable.EstimateDistance(board.Boxes());
-  std::shared_ptr<SearchState> initialState = std::make_shared<SearchState>(
-      board.ExtractSearchHash(), board.Player(), board.Boxes(), normPushes, 0,
-      initialHValue);
+  std::shared_ptr<SearchState> initialState =
+      std::make_shared<SearchState>(board.Hash(), board.Player(), board.Boxes(),
+                                    normPushes, 0, initialHValue);
   openStatesQueue.emplace(initialState);
   openStates[initialState->Id()] = initialState;
 
@@ -177,10 +192,9 @@ SolveResult Solver::Solve(std::ostream *graphOutput) {
     }
 
     // Debug output.
-    if (graphOutput) {
-      hashFrom = board.ExtractSearchHash();
-      OutputGraphNode(*graphOutput, board, hashFrom, currState->AStarGValue(),
-                      currState->AStarHValue());
+    if (debugFile) {
+      OutputDebugState(*debugFile, board, statesVisited,
+                       currState->AStarGValue(), currState->AStarHValue());
     }
 
     // Generate children.
@@ -196,15 +210,14 @@ SolveResult Solver::Solve(std::ostream *graphOutput) {
       NormalizeBoardAndFindPushes(board, normVisited, normStack, normPushes);
 
       // Check if child exists on closed list.
-      auto childId = board.ExtractSearchHash();
-      if (closedStates.find(childId) != closedStates.end()) {
+      if (closedStates.find(board.Hash()) != closedStates.end()) {
         board.PerformUnpush(p);
         continue;
       }
 
       // Check if we already have an open state (with lower-or-better g value).
       int childGValue = currState->AStarGValue() + 1;
-      auto it = openStates.find(childId);
+      auto it = openStates.find(board.Hash());
       if (it != openStates.end()) {
         if (childGValue >= it->second->AStarGValue()) {
           board.PerformUnpush(p);
@@ -215,28 +228,26 @@ SolveResult Solver::Solve(std::ostream *graphOutput) {
       // Compute heuristic.
       int childHValue = distanceTable.EstimateDistance(board.Boxes());
 
-      // Debug output to child.
-      if (graphOutput) {
-        uint64_t hashTo = board.ExtractSearchHash();
-        OutputGraphNode(*graphOutput, board, hashTo, childGValue, childHValue);
-        OutputGraphEdge(*graphOutput, hashFrom, hashTo);
+      // Debug push.
+      if (debugFile) {
+        OutputDebugPush(*debugFile, p, board);
       }
 
       // Update open state.
       // N.B., note on duplicate states
       std::shared_ptr<SearchState> childState = std::make_shared<SearchState>(
-          board.ExtractSearchHash(), board.Player(), board.Boxes(), normPushes,
-          childGValue, childHValue);
+          board.Hash(), board.Player(), board.Boxes(), normPushes, childGValue,
+          childHValue);
       openStatesQueue.emplace(childState);
       openStates[childState->Id()] = childState;
       board.PerformUnpush(p);
     }
+
+    if (debugFile) {
+      *debugFile << std::endl;
+    }
   }
 end_of_search:
-
-  if (graphOutput) {
-    OutputGraphFooter(*graphOutput);
-  }
 
   return SolveResult(solutionPushes != -1, statesVisited, solutionPushes);
 }

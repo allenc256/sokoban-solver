@@ -63,6 +63,9 @@ Board::Board(int width,
     boxArrayHashTable[i] = rnd();
     playerArrayHashTable[i] = rnd();
   }
+
+  // Compute hash.
+  hash = ComputeHash();
 }
 
 // N.B., from https://stackoverflow.com/questions/216823/how-to-trim-a-stdstring
@@ -138,18 +141,9 @@ Board Board::ParseFromText(std::istream &is) {
   return Board(width, height, player, wallArray, boxes, goals);
 }
 
-static void OutputNewline(std::ostream &os, bool quoteNewlines) {
-  if (quoteNewlines) {
-    os << "\\l";
-  } else {
-    os << std::endl;
-  }
-}
-
-void Board::DumpToText(std::ostream &os, bool quoteNewlines) const {
+void Board::DumpToText(std::ostream &os) const {
   int position = 0;
   for (int y = 0; y < height; y++) {
-    os << ">";
     for (int x = 0; x < width; x++) {
       char ch;
       if (wallArray[position]) {
@@ -174,61 +168,30 @@ void Board::DumpToText(std::ostream &os, bool quoteNewlines) const {
       os << ch;
       position++;
     }
-    OutputNewline(os, quoteNewlines);
+    os << std::endl;
   }
 }
 
 void Board::PerformPush(const Push &push) {
   Position boxFrom = push.Box();
   Position boxTo = MovePosition(boxFrom, push.Direction());
-  assert(!wallArray[boxTo] && boxArray[boxTo] == NO_BOX &&
-         boxArray[boxFrom] != NO_BOX);
-
-  // Push the box.
-  int boxIndex = boxArray[boxFrom];
-  boxArray[boxFrom] = NO_BOX;
-  boxArray[boxTo] = boxIndex;
-  boxes[boxIndex] = boxTo;
-
-  // Update goals completed count.
-  if (goalArray[boxFrom] != NO_GOAL) {
-    goalsCompleted--;
-  }
-  if (goalArray[boxTo] != NO_GOAL) {
-    goalsCompleted++;
-  }
-
-  // Move the player.
-  player = boxFrom;
+  MoveBox(boxFrom, boxTo);
+  MovePlayer(boxFrom);
 }
 
 void Board::PerformUnpush(const Push &push) {
-  // Unmove box.
   Position boxTo = push.Box();
   Position boxFrom = MovePosition(boxTo, push.Direction());
-  int boxIndex = boxArray[boxFrom];
-
-  assert(boxArray[boxTo] == NO_BOX && boxIndex != NO_BOX &&
-         boxes[boxIndex] == boxFrom);
-  boxArray[boxFrom] = NO_BOX;
-  boxArray[boxTo] = boxIndex;
-  boxes[boxIndex] = boxTo;
-
-  // Update goals completed count.
-  if (goalArray[boxFrom] != NO_GOAL) {
-    goalsCompleted--;
-  }
-  if (goalArray[boxTo] != NO_GOAL) {
-    goalsCompleted++;
-  }
-
-  // Unmove the player.
-  player = UnmovePosition(boxTo, push.Direction());
+  MoveBox(boxFrom, boxTo);
+  MovePlayer(UnmovePosition(boxTo, push.Direction()));
 }
 
-void Board::ResetState(Position _player, const std::vector<Position> &_boxes) {
+void Board::ResetState(Position playerTo,
+                       const std::vector<Position> &boxesTo) {
+  assert(boxes.size() == boxesTo.size());
+
   // Reset player state.
-  player = _player;
+  player = playerTo;
 
   // Clear box state.
   for (Position p : boxes) {
@@ -237,7 +200,7 @@ void Board::ResetState(Position _player, const std::vector<Position> &_boxes) {
   goalsCompleted = 0;
 
   // Reset box state.
-  boxes = _boxes;
+  boxes = boxesTo;
   for (int i = 0; i < boxes.size(); i++) {
     Position p = boxes[i];
     boxArray[p] = i;
@@ -245,17 +208,52 @@ void Board::ResetState(Position _player, const std::vector<Position> &_boxes) {
       goalsCompleted++;
     }
   }
+
+  // Reset hash.
+  hash = ComputeHash();
 }
 
-// TODO: make this efficient
-uint64_t Board::ExtractSearchHash() const {
+void Board::MoveBox(Position from, Position to) {
+  if (from == to) {
+    return;
+  }
+  assert(!wallArray[to] && boxArray[to] == NO_BOX && boxArray[from] != NO_BOX);
+
+  // Push the box.
+  int boxIndex = boxArray[from];
+  boxArray[from] = NO_BOX;
+  boxArray[to] = boxIndex;
+  boxes[boxIndex] = to;
+
+  // Update goals completed count.
+  if (goalArray[from] != NO_GOAL) {
+    goalsCompleted--;
+  }
+  if (goalArray[to] != NO_GOAL) {
+    goalsCompleted++;
+  }
+
+  // Update hash.
+  hash ^= boxArrayHashTable[from] ^ boxArrayHashTable[to];
+  assert(hash == ComputeHash());
+}
+
+void Board::MovePlayer(Position to) {
+  if (player == to) {
+    return;
+  }
+  assert(!wallArray[to]);
+  Position from = player;
+  player = to;
+  hash ^= playerArrayHashTable[from] ^ playerArrayHashTable[to];
+  assert(hash == ComputeHash());
+}
+
+uint64_t Board::ComputeHash() const {
   uint64_t result = 0;
-
   result ^= playerArrayHashTable[player];
-
   for (Position box : boxes) {
     result ^= boxArrayHashTable[box];
   }
-
   return result;
 }

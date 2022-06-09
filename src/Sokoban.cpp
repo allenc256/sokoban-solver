@@ -16,8 +16,8 @@ using namespace std::string_literals;
 int main(int argc, char *argv[]) {
   // Parse arguments.
   argparse::ArgumentParser program("Sokoban");
-  program.add_argument("level_file").help("load and display sokoban file");
-  program.add_argument("-d", "--dot").help("dot file to output debug graph to");
+  program.add_argument("level_file").help("sokoban level file");
+  program.add_argument("-d", "--debug").help("debug log file");
   program.add_argument("-m", "--max-states")
       .help("maximum number of states to limit search to")
       .default_value(1000000)
@@ -41,18 +41,18 @@ int main(int argc, char *argv[]) {
     levelFile.close();
 
     // Open the graph output if present.
-    std::unique_ptr<std::ofstream> graphOutput;
+    std::unique_ptr<std::ofstream> debugFile;
     if (program.present("-d")) {
-      graphOutput.reset(new std::ofstream(program.get("-d")));
-      if (!graphOutput->good()) {
-        throw std::invalid_argument("bad graph file: "s + program.get("-d"));
+      debugFile.reset(new std::ofstream(program.get("-d")));
+      if (!debugFile->good()) {
+        throw std::invalid_argument("bad debug file: "s + program.get("-d"));
       }
     }
 
     // Run the solver.
     auto timeStart = std::chrono::system_clock::now();
     Solver solver(board, program.get<int>("-m"));
-    SolveResult result = solver.Solve(graphOutput.get());
+    SolveResult result = solver.Solve(debugFile.get());
     auto timeEnd = std::chrono::system_clock::now();
     std::chrono::duration<double, std::milli> elapsed = timeEnd - timeStart;
     std::cout << "solved: " << (result.solved ? "true" : "false") << std::endl;

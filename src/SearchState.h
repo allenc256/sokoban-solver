@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <vector>
 
 #include "Position.h"
@@ -18,7 +19,10 @@ public:
         boxes(boxes),
         pushes(pushes),
         aStarGValue(aStarGValue),
-        aStarHValue(aStarHValue) {}
+        aStarHValue(aStarHValue) {
+    assert(this->pushes.size() == this->pushes.capacity());
+    assert(this->boxes.size() == this->boxes.capacity());
+  }
 
   uint64_t Id() const { return id; }
   Position Player() const { return player; }
