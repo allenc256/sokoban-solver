@@ -8,11 +8,14 @@
 #include "SearchState.h"
 #include "Solver.h"
 
-void NormalizeBoardAndFindPushes(Board &board,
-                                 const SimpleDeadlockTable &simpleDeadlockTable,
-                                 std::vector<bool> &normVisited,
-                                 std::vector<Position> &normStack,
-                                 std::vector<Push> &normPushes) {
+enum class FreezeStatus { UNKNOWN, FROZEN, FREE };
+
+void NormalizeBoardAndFindPushes(
+    Board &board,
+    const SimpleDeadlockDetector &simpleDeadlockDetector,
+    std::vector<bool> &normVisited,
+    std::vector<Position> &normStack,
+    std::vector<Push> &normPushes) {
   // Initialize input data structures.
   std::fill(normVisited.begin(), normVisited.end(), false);
   normStack.clear();
@@ -39,7 +42,7 @@ void NormalizeBoardAndFindPushes(Board &board,
       if (board.HasBox(p2)) {
         Position p3 = board.MovePosition(p2, d);
         if (!board.HasBox(p3) && !board.HasWall(p3) &&
-            !simpleDeadlockTable.IsDeadlock(p3)) {
+            !simpleDeadlockDetector.IsDeadlock(p3)) {
           normPushes.emplace_back(p2, d);
         }
         continue;
@@ -57,7 +60,8 @@ void NormalizeBoardAndFindPushes(Board &board,
 
 Solver::Solver(Board &board, int maxStates)
     : board(board),
-      simpleDeadlockTable(board),
+      simpleDeadlockDetector(board),
+      freezeDeadlockDetector(board),
       distanceTable(board),
       maxStates(maxStates) {}
 
@@ -85,26 +89,31 @@ static void OutputDebugState(std::ostream &debugFile,
 
 static void OutputDebugPush(std::ostream &debugFile,
                             const Push &push,
-                            const Board &board) {
+                            const Board &board,
+                            bool isDeadlocked) {
   debugFile << "push: (" << board.PositionX(push.Box()) << ", "
             << board.PositionY(push.Box()) << ") ";
   switch (push.Direction()) {
-    case Direction::UP:
-      debugFile << "UP   ";
-      break;
-    case Direction::DOWN:
-      debugFile << "DOWN ";
-      break;
-    case Direction::LEFT:
-      debugFile << "LEFT ";
-      break;
-    case Direction::RIGHT:
-      debugFile << "RIGHT";
-      break;
+  case Direction::UP:
+    debugFile << "UP   ";
+    break;
+  case Direction::DOWN:
+    debugFile << "DOWN ";
+    break;
+  case Direction::LEFT:
+    debugFile << "LEFT ";
+    break;
+  case Direction::RIGHT:
+    debugFile << "RIGHT";
+    break;
   }
   debugFile << " -> ";
   OutputDebugHash(debugFile, board.Hash());
   debugFile << std::endl;
+  if (isDeadlocked) {
+    debugFile << "deadlock:" << std::endl;
+    board.DumpToText(debugFile);
+  }
 }
 
 SolveResult Solver::Solve(std::ostream *debugFile) {
@@ -129,7 +138,7 @@ SolveResult Solver::Solve(std::ostream *debugFile) {
   std::unordered_map<uint64_t, std::shared_ptr<SearchState>> openStates;
   std::unordered_set<uint64_t> closedStates;
 
-  NormalizeBoardAndFindPushes(board, simpleDeadlockTable, normVisited,
+  NormalizeBoardAndFindPushes(board, simpleDeadlockDetector, normVisited,
                               normStack, normPushes);
   int initialHValue = distanceTable.EstimateDistance(board.Boxes());
   std::shared_ptr<SearchState> initialState =
@@ -165,7 +174,19 @@ SolveResult Solver::Solve(std::ostream *debugFile) {
     for (const Push &p : currState->Pushes()) {
       // Mutate board.
       board.PerformPush(p);
-      NormalizeBoardAndFindPushes(board, simpleDeadlockTable, normVisited,
+
+      // Check for potential freeze deadlock.
+      Position boxTo = board.MovePosition(p.Box(), p.Direction());
+      if (freezeDeadlockDetector.IsDeadlock(boxTo)) {
+        if (debugFile) {
+          OutputDebugPush(*debugFile, p, board, true);
+        }
+        board.PerformUnpush(p);
+        continue;
+      }
+
+      // Normalize and find children.
+      NormalizeBoardAndFindPushes(board, simpleDeadlockDetector, normVisited,
                                   normStack, normPushes);
 
       // Check if child exists on closed list.
@@ -189,7 +210,7 @@ SolveResult Solver::Solve(std::ostream *debugFile) {
 
       // Debug push.
       if (debugFile) {
-        OutputDebugPush(*debugFile, p, board);
+        OutputDebugPush(*debugFile, p, board, false);
       }
 
       // Update open state.

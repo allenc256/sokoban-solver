@@ -107,30 +107,30 @@ Board Board::ParseFromText(std::istream &is) {
       char ch = lines[y][x];
       int position = y * width + x;
       switch (ch) {
-        case '#':
-          wallArray[position] = true;
-          break;
-        case '@':
-          player = position;
-          break;
-        case '+':
-          player = position;
-          goals.emplace_back(position);
-          break;
-        case '$':
-          boxes.emplace_back(position);
-          break;
-        case '*':
-          boxes.emplace_back(position);
-          goals.emplace_back(position);
-          break;
-        case '.':
-          goals.emplace_back(position);
-          break;
-        case ' ':
-          break;
-        default:
-          throw std::invalid_argument("unrecognized character: "s + ch);
+      case '#':
+        wallArray[position] = true;
+        break;
+      case '@':
+        player = position;
+        break;
+      case '+':
+        player = position;
+        goals.emplace_back(position);
+        break;
+      case '$':
+        boxes.emplace_back(position);
+        break;
+      case '*':
+        boxes.emplace_back(position);
+        goals.emplace_back(position);
+        break;
+      case '.':
+        goals.emplace_back(position);
+        break;
+      case ' ':
+        break;
+      default:
+        throw std::invalid_argument("unrecognized character: "s + ch);
       }
     }
   }

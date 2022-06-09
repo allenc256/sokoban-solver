@@ -39,39 +39,35 @@ public:
 
   Position MovePosition(Position p, Direction d) const {
     switch (d) {
-      case Direction::UP:
-        return p - width;
-      case Direction::DOWN:
-        return p + width;
-      case Direction::LEFT:
-        return p - 1;
-      case Direction::RIGHT:
-        return p + 1;
+    case Direction::UP:
+      return p - width;
+    case Direction::DOWN:
+      return p + width;
+    case Direction::LEFT:
+      return p - 1;
+    case Direction::RIGHT:
+      return p + 1;
     }
     std::abort();
   }
 
   Position UnmovePosition(Position p, Direction d) const {
     switch (d) {
-      case Direction::UP:
-        return p + width;
-      case Direction::DOWN:
-        return p - width;
-      case Direction::LEFT:
-        return p + 1;
-      case Direction::RIGHT:
-        return p - 1;
+    case Direction::UP:
+      return p + width;
+    case Direction::DOWN:
+      return p - width;
+    case Direction::LEFT:
+      return p + 1;
+    case Direction::RIGHT:
+      return p - 1;
     }
     std::abort();
   }
 
-  int PositionX(Position p) const {
-    return p % width;
-  }
+  int PositionX(Position p) const { return p % width; }
 
-  int PositionY(Position p) const {
-    return p / width;
-  }
+  int PositionY(Position p) const { return p / width; }
 
 private:
   Board(int width,

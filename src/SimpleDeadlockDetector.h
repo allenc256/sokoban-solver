@@ -2,9 +2,9 @@
 
 #include "Board.h"
 
-class SimpleDeadlockTable {
+class SimpleDeadlockDetector {
 public:
-  SimpleDeadlockTable(const Board &board);
+  SimpleDeadlockDetector(const Board &board);
 
   bool IsDeadlock(Position box) const { return deadlockArray[box]; }
 

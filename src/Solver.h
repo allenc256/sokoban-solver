@@ -6,7 +6,8 @@
 
 #include "Board.h"
 #include "DistanceTable.h"
-#include "SimpleDeadlockTable.h"
+#include "FreezeDeadlockDetector.h"
+#include "SimpleDeadlockDetector.h"
 #include "SolveResult.h"
 
 class Solver {
@@ -17,7 +18,8 @@ public:
 
 private:
   Board &board;
-  SimpleDeadlockTable simpleDeadlockTable;
+  SimpleDeadlockDetector simpleDeadlockDetector;
+  FreezeDeadlockDetector freezeDeadlockDetector;
   DistanceTable distanceTable;
   int maxStates;
 };

@@ -1,4 +1,4 @@
-#include "SimpleDeadlockTable.h"
+#include "SimpleDeadlockDetector.h"
 
 static void SearchForSimpleDeadlocks(const Board &board,
                                      Position p,
@@ -25,7 +25,7 @@ static void SearchForSimpleDeadlocks(const Board &board,
   }
 }
 
-SimpleDeadlockTable::SimpleDeadlockTable(const Board &board)
+SimpleDeadlockDetector::SimpleDeadlockDetector(const Board &board)
     : deadlockArray(board.Width() * board.Height(), true) {
   std::vector<bool> visited(board.Width() * board.Height(), false);
   for (Position p = 0; p < board.Width() * board.Height(); p++) {
