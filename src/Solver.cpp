@@ -61,7 +61,7 @@ void NormalizeBoardAndFindPushes(
 Solver::Solver(Board &board, int maxStates)
     : board(board),
       simpleDeadlockDetector(board),
-      freezeDeadlockDetector(board),
+      freezeDeadlockDetector(board, simpleDeadlockDetector),
       distanceTable(board),
       maxStates(maxStates) {}
 

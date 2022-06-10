@@ -2,4 +2,5 @@
   BasedOnStyle: Chromium,
   AccessModifierOffset: -2,
   PointerAlignment: Right,
+  IndentCaseLabels: false,
 }
