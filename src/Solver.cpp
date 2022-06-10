@@ -87,10 +87,22 @@ static void OutputDebugState(std::ostream &debugFile,
   debugFile << "goals: " << board.GoalsCompleted() << std::endl;
 }
 
+static void OutputDeadlock(std::ostream &debugFile, const Board &board) {
+  debugFile << "deadlock:" << std::endl;
+  board.DumpToText(debugFile);
+}
+
+enum class PushType {
+  OPEN,
+  OPEN_ALREADY,
+  DEADLOCK,
+  CLOSED,
+};
+
 static void OutputDebugPush(std::ostream &debugFile,
                             const Push &push,
                             const Board &board,
-                            bool isDeadlocked) {
+                            PushType type) {
   debugFile << "push: (" << board.PositionX(push.Box()) << ", "
             << board.PositionY(push.Box()) << ") ";
   switch (push.Direction()) {
@@ -109,11 +121,18 @@ static void OutputDebugPush(std::ostream &debugFile,
   }
   debugFile << " -> ";
   OutputDebugHash(debugFile, board.Hash());
-  debugFile << std::endl;
-  if (isDeadlocked) {
-    debugFile << "deadlock:" << std::endl;
-    board.DumpToText(debugFile);
+  switch (type) {
+  case PushType::OPEN_ALREADY:
+    debugFile << " (open already)";
+    break;
+  case PushType::DEADLOCK:
+    debugFile << " (deadlock)";
+    break;
+  case PushType::CLOSED:
+    debugFile << " (closed)";
+    break;
   }
+  debugFile << std::endl;
 }
 
 SolveResult Solver::Solve(std::ostream *debugFile) {
@@ -179,7 +198,8 @@ SolveResult Solver::Solve(std::ostream *debugFile) {
       Position boxTo = board.MovePosition(p.Box(), p.Direction());
       if (freezeDeadlockDetector.IsDeadlock(boxTo)) {
         if (debugFile) {
-          OutputDebugPush(*debugFile, p, board, true);
+          OutputDebugPush(*debugFile, p, board, PushType::DEADLOCK);
+          OutputDeadlock(*debugFile, board);
         }
         board.PerformUnpush(p);
         continue;
@@ -191,6 +211,9 @@ SolveResult Solver::Solve(std::ostream *debugFile) {
 
       // Check if child exists on closed list.
       if (closedStates.find(board.Hash()) != closedStates.end()) {
+        if (debugFile) {
+          OutputDebugPush(*debugFile, p, board, PushType::CLOSED);
+        }
         board.PerformUnpush(p);
         continue;
       }
@@ -200,6 +223,9 @@ SolveResult Solver::Solve(std::ostream *debugFile) {
       auto it = openStates.find(board.Hash());
       if (it != openStates.end()) {
         if (childGValue >= it->second->AStarGValue()) {
+          if (debugFile) {
+            OutputDebugPush(*debugFile, p, board, PushType::OPEN_ALREADY);
+          }
           board.PerformUnpush(p);
           continue;
         }
@@ -210,7 +236,7 @@ SolveResult Solver::Solve(std::ostream *debugFile) {
 
       // Debug push.
       if (debugFile) {
-        OutputDebugPush(*debugFile, p, board, false);
+        OutputDebugPush(*debugFile, p, board, PushType::OPEN);
       }
 
       // Update open state.

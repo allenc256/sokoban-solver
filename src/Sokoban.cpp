@@ -18,6 +18,10 @@ int main(int argc, char *argv[]) {
   argparse::ArgumentParser program("Sokoban");
   program.add_argument("level_file").help("sokoban level file");
   program.add_argument("-d", "--debug").help("debug log file");
+  program.add_argument("-t", "--tabular")
+      .help("tabular output")
+      .default_value(false)
+      .implicit_value(true);
   program.add_argument("-m", "--max-states")
       .help("maximum number of states to limit search to")
       .default_value(1000000)
@@ -32,10 +36,10 @@ int main(int argc, char *argv[]) {
 
   try {
     // Load the board.
-    std::ifstream levelFile(program.get("level_file"));
+    std::string levelFileName = program.get("level_file");
+    std::ifstream levelFile(levelFileName);
     if (!levelFile.good()) {
-      throw std::invalid_argument("bad level file: "s +
-                                  program.get("level_file"));
+      throw std::invalid_argument("bad level file: "s + levelFileName);
     }
     Board board = Board::ParseFromText(levelFile);
     levelFile.close();
@@ -55,10 +59,22 @@ int main(int argc, char *argv[]) {
     SolveResult result = solver.Solve(debugFile.get());
     auto timeEnd = std::chrono::system_clock::now();
     std::chrono::duration<double, std::milli> elapsed = timeEnd - timeStart;
-    std::cout << "solved: " << (result.solved ? "true" : "false") << std::endl;
-    std::cout << "states: " << result.statesVisited << std::endl;
-    std::cout << "pushes: " << result.pushesRequired << std::endl;
-    std::cout << "elapsed: " << elapsed.count() << " ms" << std::endl;
+
+    // Output results.
+    if (program["-t"] == true) {
+      std::cout << levelFileName << '\t';
+      std::cout << (result.solved ? "true" : "false") << '\t';
+      std::cout << result.statesVisited << '\t';
+      std::cout << result.pushesRequired << '\t';
+      std::cout << elapsed.count() << " ms" << std::endl;
+    } else {
+      std::cout << "solved: " << (result.solved ? "true" : "false")
+                << std::endl;
+      std::cout << "states: " << result.statesVisited << std::endl;
+      std::cout << "pushes: " << result.pushesRequired << std::endl;
+      std::cout << "elapsed: " << elapsed.count() << " ms" << std::endl;
+    }
+
   } catch (const std::exception &e) {
     std::cerr << "ERROR: " << e.what() << std::endl;
     std::exit(1);
