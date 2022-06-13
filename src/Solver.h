@@ -7,6 +7,7 @@
 #include "Board.h"
 #include "DistanceTable.h"
 #include "FreezeDeadlockDetector.h"
+#include "PushSearcher.h"
 #include "SimpleDeadlockDetector.h"
 #include "SolveResult.h"
 
@@ -20,6 +21,7 @@ private:
   Board &board;
   SimpleDeadlockDetector simpleDeadlockDetector;
   FreezeDeadlockDetector freezeDeadlockDetector;
+  PushSearcher pushSearcher;
   DistanceTable distanceTable;
   int maxStates;
 };

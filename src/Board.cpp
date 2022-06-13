@@ -25,15 +25,16 @@ Board::Board(int width,
              const std::vector<Position> &goals)
     : width(width),
       height(height),
+      size(width * height),
       player(player),
       boxes(boxes),
       goals(goals),
-      boxArray(width * height, NO_BOX),
+      boxArray(size, NO_BOX),
       wallArray(wallArray),
-      goalArray(width * height, NO_GOAL),
+      goalArray(size, NO_GOAL),
       goalsCompleted(0),
-      boxArrayHashTable(width * height),
-      playerArrayHashTable(width * height) {
+      boxArrayHashTable(size),
+      playerArrayHashTable(size) {
   if (boxes.size() != goals.size()) {
     throw std::invalid_argument("box/goal count mismatch: "s +
                                 std::to_string(boxes.size()) + "/" +

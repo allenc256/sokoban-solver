@@ -1,3 +1,4 @@
+#include <cassert>
 #include <iomanip>
 #include <iostream>
 #include <memory>
@@ -5,63 +6,43 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include "SearchState.h"
 #include "Solver.h"
 
-enum class FreezeStatus { UNKNOWN, FROZEN, FREE };
+struct SearchState {
+  uint64_t id;
+  Position player;
+  std::vector<Position> boxes;
+  std::vector<Push> pushes;
+  int aStarGValue;
+  int aStarHValue;
+  bool isPICorral;
 
-void NormalizeBoardAndFindPushes(
-    Board &board,
-    const SimpleDeadlockDetector &simpleDeadlockDetector,
-    std::vector<bool> &normVisited,
-    std::vector<Position> &normStack,
-    std::vector<Push> &normPushes) {
-  // Initialize input data structures.
-  std::fill(normVisited.begin(), normVisited.end(), false);
-  normStack.clear();
-  normPushes.clear();
+  int AStarFValue() const { return aStarGValue + aStarHValue; }
 
-  // Perform DFS.
-  Position normPlayer = board.Player();
-  normStack.push_back(board.Player());
-  while (!normStack.empty()) {
-    Position p = normStack.back();
-    normStack.pop_back();
-    if (normVisited[p]) {
-      continue;
-    }
-    normVisited[p] = true;
-    for (Direction d : ALL_DIRECTIONS) {
-      Position p2 = board.MovePosition(p, d);
-      if (normVisited[p2]) {
-        continue;
-      }
-      if (board.HasWall(p2)) {
-        continue;
-      }
-      if (board.HasBox(p2)) {
-        Position p3 = board.MovePosition(p2, d);
-        if (!board.HasBox(p3) && !board.HasWall(p3) &&
-            !simpleDeadlockDetector.IsDeadlock(p3)) {
-          normPushes.emplace_back(p2, d);
-        }
-        continue;
-      }
-      if (p2 < normPlayer) {
-        normPlayer = p2;
-      }
-      normStack.push_back(p2);
-    }
+  SearchState(uint64_t id,
+              Position player,
+              const std::vector<Position> &boxes,
+              const std::vector<Push> &pushes,
+              int aStarGValue,
+              int aStarHValue,
+              bool isPICorral)
+      : id(id),
+        player(player),
+        boxes(boxes),
+        pushes(pushes),
+        aStarGValue(aStarGValue),
+        aStarHValue(aStarHValue),
+        isPICorral(isPICorral) {
+    assert(this->pushes.size() == this->pushes.capacity());
+    assert(this->boxes.size() == this->boxes.capacity());
   }
-
-  // Normalize player position.
-  board.MovePlayer(normPlayer);
-}
+};
 
 Solver::Solver(Board &board, int maxStates)
     : board(board),
       simpleDeadlockDetector(board),
       freezeDeadlockDetector(board, simpleDeadlockDetector),
+      pushSearcher(board, simpleDeadlockDetector),
       distanceTable(board),
       maxStates(maxStates) {}
 
@@ -76,7 +57,8 @@ static void OutputDebugState(std::ostream &debugFile,
                              const Board &board,
                              int stateIndex,
                              int gValue,
-                             int hValue) {
+                             int hValue,
+                             bool isPICorral) {
   debugFile << "state " << stateIndex << ": ";
   OutputDebugHash(debugFile, board.Hash());
   debugFile << std::endl;
@@ -85,6 +67,9 @@ static void OutputDebugState(std::ostream &debugFile,
   debugFile << "h-value: " << hValue << std::endl;
   debugFile << "f-value: " << (gValue + hValue) << std::endl;
   debugFile << "goals: " << board.GoalsCompleted() << std::endl;
+  if (isPICorral) {
+    debugFile << "PI-corral: true" << std::endl;
+  }
 }
 
 static void OutputDeadlock(std::ostream &debugFile, const Board &board) {
@@ -123,13 +108,13 @@ static void OutputDebugPush(std::ostream &debugFile,
   OutputDebugHash(debugFile, board.Hash());
   switch (type) {
   case PushType::OPEN_ALREADY:
-    debugFile << " (open already)";
+    debugFile << " (pruned: open already)";
     break;
   case PushType::DEADLOCK:
-    debugFile << " (deadlock)";
+    debugFile << " (pruned: deadlock)";
     break;
   case PushType::CLOSED:
-    debugFile << " (closed)";
+    debugFile << " (pruned: closed)";
     break;
   }
   debugFile << std::endl;
@@ -140,9 +125,7 @@ SolveResult Solver::Solve(std::ostream *debugFile) {
     return SolveResult(true, 0, 0);
   }
 
-  std::vector<bool> normVisited(board.Width() * board.Height());
-  std::vector<Position> normStack;
-  std::vector<Push> normPushes;
+  std::vector<Push> pushes;
   int statesVisited = 0;
   int solutionPushes = -1;
 
@@ -157,40 +140,42 @@ SolveResult Solver::Solve(std::ostream *debugFile) {
   std::unordered_map<uint64_t, std::shared_ptr<SearchState>> openStates;
   std::unordered_set<uint64_t> closedStates;
 
-  NormalizeBoardAndFindPushes(board, simpleDeadlockDetector, normVisited,
-                              normStack, normPushes);
+  // Find pushes and normalize the board.
+  PushSearchResult pushSearchResult = pushSearcher.FindPushes(pushes);
+  board.MovePlayer(pushSearchResult.normalizedPlayer);
+
   int initialHValue = distanceTable.EstimateDistance(board.Boxes());
-  std::shared_ptr<SearchState> initialState =
-      std::make_shared<SearchState>(board.Hash(), board.Player(), board.Boxes(),
-                                    normPushes, 0, initialHValue);
+  std::shared_ptr<SearchState> initialState = std::make_shared<SearchState>(
+      board.Hash(), board.Player(), board.Boxes(), pushes, 0, initialHValue,
+      pushSearchResult.isPICorral);
   openStatesQueue.emplace(initialState);
-  openStates[initialState->Id()] = initialState;
+  openStates[initialState->id] = initialState;
 
   while (!openStatesQueue.empty() && statesVisited < maxStates) {
     // Get current node, remove from open list, add to closed list.
     std::shared_ptr<SearchState> currState = openStatesQueue.top();
     openStatesQueue.pop();
-    openStates.erase(currState->Id());
-    closedStates.insert(currState->Id());
+    openStates.erase(currState->id);
+    closedStates.insert(currState->id);
     statesVisited++;
 
     // Reset board state.
-    board.ResetState(currState->Player(), currState->Boxes());
+    board.ResetState(currState->player, currState->boxes);
 
     // Check if done.
     if (board.Done()) {
-      solutionPushes = currState->AStarGValue();
+      solutionPushes = currState->aStarGValue;
       break;
     }
 
     // Debug output.
     if (debugFile) {
-      OutputDebugState(*debugFile, board, statesVisited,
-                       currState->AStarGValue(), currState->AStarHValue());
+      OutputDebugState(*debugFile, board, statesVisited, currState->aStarGValue,
+                       currState->aStarHValue, currState->isPICorral);
     }
 
     // Generate children.
-    for (const Push &p : currState->Pushes()) {
+    for (const Push &p : currState->pushes) {
       // Mutate board.
       board.PerformPush(p);
 
@@ -205,9 +190,9 @@ SolveResult Solver::Solve(std::ostream *debugFile) {
         continue;
       }
 
-      // Normalize and find children.
-      NormalizeBoardAndFindPushes(board, simpleDeadlockDetector, normVisited,
-                                  normStack, normPushes);
+      // Find pushes and normalize the board.
+      pushSearchResult = pushSearcher.FindPushes(pushes);
+      board.MovePlayer(pushSearchResult.normalizedPlayer);
 
       // Check if child exists on closed list.
       if (closedStates.find(board.Hash()) != closedStates.end()) {
@@ -219,10 +204,10 @@ SolveResult Solver::Solve(std::ostream *debugFile) {
       }
 
       // Check if we already have an open state (with lower-or-better g value).
-      int childGValue = currState->AStarGValue() + 1;
+      int childGValue = currState->aStarGValue + 1;
       auto it = openStates.find(board.Hash());
       if (it != openStates.end()) {
-        if (childGValue >= it->second->AStarGValue()) {
+        if (childGValue >= it->second->aStarGValue) {
           if (debugFile) {
             OutputDebugPush(*debugFile, p, board, PushType::OPEN_ALREADY);
           }
@@ -242,10 +227,10 @@ SolveResult Solver::Solve(std::ostream *debugFile) {
       // Update open state.
       // N.B., note on duplicate states
       std::shared_ptr<SearchState> childState = std::make_shared<SearchState>(
-          board.Hash(), board.Player(), board.Boxes(), normPushes, childGValue,
-          childHValue);
+          board.Hash(), board.Player(), board.Boxes(), pushes, childGValue,
+          childHValue, pushSearchResult.isPICorral);
       openStatesQueue.emplace(childState);
-      openStates[childState->Id()] = childState;
+      openStates[childState->id] = childState;
       board.PerformUnpush(p);
     }
 

@@ -25,6 +25,7 @@ public:
 
   int Width() const { return width; }
   int Height() const { return height; }
+  int Size() const { return size; }
 
   bool HasGoal(Position p) const { return goalArray[p] != -1; }
   bool HasWall(Position p) const { return wallArray[p]; }
@@ -80,7 +81,7 @@ private:
   void Normalize();
   uint64_t ComputeHash() const;
 
-  int width, height;
+  int width, height, size;
   Position player;
   std::vector<Position> boxes;
   std::vector<Position> goals;

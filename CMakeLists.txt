@@ -7,4 +7,5 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 include_directories(include)
 
-add_executable(Sokoban src/Sokoban.cpp src/Board.cpp src/Solver.cpp src/DistanceTable.cpp src/SimpleDeadlockDetector.cpp src/FreezeDeadlockDetector.cpp)
+add_executable(Sokoban src/Sokoban.cpp src/Board.cpp src/Solver.cpp src/DistanceTable.cpp src/SimpleDeadlockDetector.cpp src/FreezeDeadlockDetector.cpp src/PushSearcher.cpp)
+
